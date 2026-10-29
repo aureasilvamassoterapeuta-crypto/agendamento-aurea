@@ -1,1 +1,150 @@
-404: Not Found
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancelar Agendamento — Áurea Silva</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #F5F0E8; font-family: 'Jost', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; color: #3D2314; }
+    .card { background: #FDFAF5; border-radius: 20px; border: 1px solid rgba(196,149,106,0.3); box-shadow: 0 8px 32px rgba(61,35,20,0.1); padding: 40px 32px; max-width: 440px; width: 100%; text-align: center; }
+    h1 { font-family: "Cormorant Garamond", serif; font-size: 1.8rem; color: #3D2314; margin-bottom: 8px; }
+    p { color: #666; font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; text-align: left; }
+    label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 500; color: #3D2314; }
+    input { width: 100%; padding: 12px 14px; border: 1px solid rgba(196,149,106,0.4); background: #FFF; border-radius: 10px; font-family: 'Jost', sans-serif; font-size: 0.95rem; color: #3D2314; outline: none; }
+    input:focus { border-color: #3D2314; }
+    .btn { display: block; width: 100%; padding: 14px; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 0.9rem; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; border: none; transition: background 0.2s; margin-top: 10px; text-decoration: none; }
+    .btn-primary { background: #3D2314; color: #FFF; }
+    .btn-primary:hover { background: #2A170D; }
+    .btn-cancel { background: #b91c1c; color: #FFF; padding: 8px 16px; font-size: 0.8rem; width: auto; }
+    .btn-cancel:hover { background: #991b1b; }
+    .btn-back { background: transparent; border: 1.5px solid #3D2314; color: #3D2314; margin-top: 16px; }
+    .item-agendamento { background: #F5F0E8; border: 1px solid rgba(196,149,106,0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; text-align: left; }
+    .hidden { display: none; }
+    .alert { padding: 12px; border-radius: 10px; font-size: 0.85rem; margin-top: 16px; text-align: center; }
+    .alert-error { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+    .alert-info { background: #E0E7FF; color: #3730A3; border: 1px solid #A5B4FC; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Cancelar Agendamento</h1>
+
+  <!-- ETAPA 1: BUSCA -->
+  <div id="step-busca">
+    <p>Informe seu e-mail ou telefone cadastrado para buscar seus agendamentos ativos:</p>
+    <div class="form-group">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" placeholder="seuemail@exemplo.com">
+    </div>
+    <div class="form-group">
+      <label for="telefone">Telefone / WhatsApp</label>
+      <input type="tel" id="telefone" placeholder="(11) 99999-9999">
+    </div>
+    <button class="btn btn-primary" onclick="buscarAgendamentos()">Buscar Agendamentos</button>
+  </div>
+
+  <!-- ETAPA 2: RESULTADOS -->
+  <div id="step-resultados" class="hidden">
+    <p>Selecione a sessão que deseja cancelar:</p>
+    <div id="lista-agendamentos"></div>
+    <button class="btn btn-back" onclick="voltar()">← Voltar</button>
+  </div>
+
+  <div id="mensagem" class="alert hidden"></div>
+</div>
+
+<script>
+  // INSIRA AQUI A URL DO SEU WEB APP DO APPS SCRIPT
+  const API_URL = "https://script.google.com/macros/s/AKfycbzei33bFTOYf6h0gbFkGEY93MwJ9tqBLTuqN3RgaFVBsgCAPwGWdgmKrNl3PnQBv-jg/exec";
+
+  async function buscarAgendamentos() {
+    const email = document.getElementById("email").value.trim();
+    const telefone = document.getElementById("telefone").value.trim();
+
+    if (!email && !telefone) {
+      exibirMensagem("Preencha o e-mail ou telefone para continuar.", "error");
+      return;
+    }
+
+    exibirMensagem("Buscando agendamentos...", "info");
+
+    try {
+      const response = await fetch(API_URL + "?acao=buscarAgendamentos", {
+        method: "POST",
+        body: JSON.stringify({ email, telefone })
+      });
+
+      const res = await response.json();
+
+      if (res.sucesso && res.agendamentos && res.agendamentos.length > 0) {
+        ocultarMensagem();
+        document.getElementById("step-busca").classList.add("hidden");
+        document.getElementById("step-resultados").classList.remove("hidden");
+
+        const container = document.getElementById("lista-agendamentos");
+        container.innerHTML = res.agendamentos.map(item => `
+          <div class="item-agendamento">
+            <div>
+              <strong>🕐 ${item.horario}</strong><br>
+              <small style="color: #666;">${item.servico}</small>
+            </div>
+            <button class="btn btn-cancel" onclick="cancelar(${item.id})">Cancelar</button>
+          </div>
+        `).join('');
+      } else {
+        exibirMensagem("Nenhum agendamento ativo foi encontrado com estes dados.", "error");
+      }
+    } catch (err) {
+      exibirMensagem("Erro de conexão. Tente novamente em instantes.", "error");
+    }
+  }
+
+  async function cancelar(linhaId) {
+    if (!confirm("Tem certeza que deseja cancelar esta sessão?")) return;
+
+    exibirMensagem("Cancelando...", "info");
+
+    try {
+      const response = await fetch(API_URL + "?acao=cancelarAgendamento", {
+        method: "POST",
+        body: JSON.stringify({ id: linhaId })
+      });
+
+      const res = await response.json();
+
+      if (res.sucesso) {
+        alert("Agendamento cancelado com sucesso!");
+        window.location.reload();
+      } else {
+        exibirMensagem(res.msg || "Erro ao cancelar agendamento.", "error");
+      }
+    } catch (err) {
+      exibirMensagem("Erro de conexão ao efetuar o cancelamento.", "error");
+    }
+  }
+
+  function exibirMensagem(texto, tipo) {
+    const msg = document.getElementById("mensagem");
+    msg.className = `alert alert-${tipo}`;
+    msg.innerText = texto;
+    msg.classList.remove("hidden");
+  }
+
+  function ocultarMensagem() {
+    document.getElementById("mensagem").classList.add("hidden");
+  }
+
+  function voltar() {
+    document.getElementById("step-resultados").classList.add("hidden");
+    document.getElementById("step-busca").classList.remove("hidden");
+    ocultarMensagem();
+  }
+</script>
+
+</body>
+</html>
+
